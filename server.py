@@ -1,21 +1,16 @@
 import os
 import uuid
-from typing import Optional, TypedDict
+from typing import List, Literal, Optional
 
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 
-from src.helpers import run_git, Session, sessions
+from src.helpers import run_git, ensure_session, Session, sessions
+from src.types import OpenRepoResult, ListChangesResult
 
 load_dotenv()
 
 mcp = FastMCP("git-committer")
-
-
-class OpenRepoResult(TypedDict):
-    session_id: str
-    dir: str
-    branch: Optional[str]
 
 
 @mcp.tool()
@@ -56,3 +51,58 @@ def open_repo(
     sid = str(uuid.uuid4())
     sessions[sid] = Session(id=sid, dir=target, branch=branch)
     return OpenRepoResult(session_id=sid, dir=target, branch=branch)
+
+
+@mcp.tool()
+def list_changes(
+        session_id: str,
+        scope: Literal["working", "staged"] = "working",
+        include_diff: bool = True,
+        max_bytes: int = 120_000,
+) -> ListChangesResult:
+    """
+    List changed files and (optionally) a trimmed unified diff for reasoning.
+
+    Args:
+        session_id: Session ID
+        scope: Working or staged changes
+        include_diff: Include diff for diff
+        max_bytes: Maximum number of bytes to return
+
+    Returns:
+        ListChangesResult:
+            files: List[str]
+            scope: Literal["working", "staged"]
+            diff: Optional[str]
+            diff_truncated: bool
+    """
+
+    sess = ensure_session(session_id)
+
+    porcelain = run_git(["status", "--porcelain=v1", "--renames"], cwd=sess.dir)
+    files: List[str] = []
+    for line in porcelain.splitlines():
+        # format: XY <path> [-> <newpath>]
+        parts = line.strip().split()
+        if not parts:
+            continue
+
+        path = parts[-1]
+        if path not in files:
+            files.append(path)
+
+    diff_text: Optional[str] = None
+    truncated = False
+    if include_diff and files:
+        args = ["diff", "--unified=3"]
+        if scope == "staged":
+            args.append("--staged")
+        diff = run_git(args, cwd=sess.dir)
+        if len(diff.encode("utf-8")) > max_bytes:
+            enc = diff.encode("utf-8")[:max_bytes]
+            diff_text = enc.decode("utf-8", errors="ignore") + "\n[diff truncated]"
+            truncated = True
+        else:
+            diff_text = diff
+
+    return ListChangesResult(files=files, scope=scope, diff=diff_text, diff_truncated=truncated)
