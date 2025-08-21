@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 
 from src.helpers import run_git, ensure_session, Session, sessions
-from src.types import OpenRepoResult, ListChangesResult, FileDiffResult
+from src.types import OpenRepoResult, ListChangesResult, FileDiffResult, CommitItem, CommitChangesResult
 
 load_dotenv()
 
@@ -149,3 +149,43 @@ def get_file_diff(
         truncated = True
 
     return FileDiffResult(path=path, diff=diff, diff_truncated=truncated)
+
+
+@mcp.tool()
+def commit_changes(
+        session_id: str,
+        commits: List[CommitItem],
+        signoff: bool = False,
+) -> CommitChangesResult:
+    """
+    Create one or multiple commits. The model should group files logically and craft messages.
+
+    Each commit item: { files: [paths], message: str }
+
+    Args:
+        session_id: Session ID
+        commits: List[CommitItem]
+        signoff: bool
+
+    Returns:
+        CommitChangesResult:
+            commits: List[CommitItem]
+    """
+
+    sess = ensure_session(session_id)
+    shas: List[str] = []
+    for item in commits:
+        files = item.get("files", [])
+        message = item.get("message", "")
+        if not message.strip():
+            raise ValueError("Commit message cannot be empty")
+        if files:
+            run_git(["add", "--", *files], cwd=sess.dir)
+
+        args = ["commit", "-m", message]
+        if signoff:
+            args.append("-s")
+        run_git(args, cwd=sess.dir)
+        sha = run_git(["rev-parse", "HEAD"], cwd=sess.dir).strip()
+        shas.append(sha)
+    return CommitChangesResult(commits=shas)

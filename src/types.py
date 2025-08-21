@@ -18,3 +18,12 @@ class FileDiffResult(TypedDict):
     path: str
     diff: Optional[str]
     diff_truncated: bool
+
+
+class CommitItem(TypedDict):
+    files: List[str]
+    message: str
+
+
+class CommitChangesResult(TypedDict):
+    commits: List[str]
