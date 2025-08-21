@@ -12,3 +12,9 @@ class ListChangesResult(TypedDict):
     scope: Literal["working", "staged"]
     diff: Optional[str]
     diff_truncated: bool
+
+
+class FileDiffResult(TypedDict):
+    path: str
+    diff: Optional[str]
+    diff_truncated: bool

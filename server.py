@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 
 from src.helpers import run_git, ensure_session, Session, sessions
-from src.types import OpenRepoResult, ListChangesResult
+from src.types import OpenRepoResult, ListChangesResult, FileDiffResult
 
 load_dotenv()
 
@@ -106,3 +106,46 @@ def list_changes(
             diff_text = diff
 
     return ListChangesResult(files=files, scope=scope, diff=diff_text, diff_truncated=truncated)
+
+
+@mcp.tool()
+def get_file_diff(
+        session_id: str,
+        path: str,
+        staged: bool = False,
+        max_bytes: int = 60_000,
+) -> FileDiffResult:
+    """
+    Return a unified diff for a single file. Useful when the full diff was truncated.
+
+    Args:
+        session_id: Session ID
+        path: Path to file
+        staged: Staged or staged diff
+        max_bytes: Maximum number of bytes to return
+
+    Returns:
+        FileDiffResult:
+            path: str
+            diff: Optional[str]
+            diff_truncated: bool
+    """
+
+    sess = ensure_session(session_id)
+    args = ["diff", "--unified=3"] + (["--staged"] if staged else []) + ["--", path]
+    try:
+        diff = run_git(args, cwd=sess.dir)
+    except RuntimeError as e:
+        # For brand-new untracked files, plain diff won’t show; try no-index against /dev/null
+        if "is outside repository" in str(e) or "fatal: ambiguous argument" in str(e):
+            diff = run_git(["diff", "--no-index", "/dev/null", path], cwd=sess.dir)
+        else:
+            raise
+
+    truncated = False
+    if len(diff.encode("utf-8")) > max_bytes:
+        enc = diff.encode("utf-8")[:max_bytes]
+        diff = enc.decode("utf-8", errors="ignore") + "\n[diff truncated]"
+        truncated = True
+
+    return FileDiffResult(path=path, diff=diff, diff_truncated=truncated)
