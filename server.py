@@ -1,4 +1,5 @@
 import os
+import re
 import uuid
 from typing import List, Literal, Optional
 
@@ -6,7 +7,8 @@ from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 
 from src.helpers import run_git, ensure_session, Session, sessions
-from src.types import OpenRepoResult, ListChangesResult, FileDiffResult, CommitItem, CommitChangesResult, PushResult
+from src.types import OpenRepoResult, ListChangesResult, FileDiffResult, CommitItem, CommitChangesResult, PushResult, \
+    ValidateResult
 
 load_dotenv()
 
@@ -218,3 +220,41 @@ def push(
     args = ["push"] + (["-u", remote, br] if create_upstream else [remote, br])
     out = run_git(args, cwd=sess.dir)
     return PushResult(remote=remote, branch=br, output=out)
+
+
+_SUBJECT_RE = re.compile(r"^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([^)]+\))?: \S[\s\S]*$")
+
+
+@mcp.tool()
+def validate_commit_message(message: str) -> ValidateResult:
+    """
+    Validate a commit message roughly against Conventional Commits.
+
+    Rules checked:
+    - First line (subject) <= 72 chars
+    - Subject line format: <type>(<optional scope>): <subject>
+    - No trailing period in subject
+
+    Args:
+        message: str
+
+    Returns:
+        ValidateResult:
+            ok: bool
+            problems: List[str]
+            subject: str
+    """
+    problems: List[str] = []
+    lines = message.splitlines()
+    subject = lines[0] if lines else ""
+
+    if len(subject) == 0:
+        problems.append("Empty subject line")
+    if len(subject) > 72:
+        problems.append("Subject line exceeds 72 characters")
+    if subject.endswith("."):
+        problems.append("Subject line should not end with a period")
+    if not _SUBJECT_RE.match(subject):
+        problems.append("Subject does not match Conventional Commit pattern")
+
+    return ValidateResult(ok=len(problems) == 0, problems=problems, subject=subject)

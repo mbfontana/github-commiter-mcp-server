@@ -33,3 +33,9 @@ class PushResult(TypedDict):
     remote: str
     branch: str
     output: str
+
+
+class ValidateResult(TypedDict):
+    ok: bool
+    problems: List[str]
+    subject: str
