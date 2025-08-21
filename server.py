@@ -258,3 +258,18 @@ def validate_commit_message(message: str) -> ValidateResult:
         problems.append("Subject does not match Conventional Commit pattern")
 
     return ValidateResult(ok=len(problems) == 0, problems=problems, subject=subject)
+
+
+@mcp.prompt(title="Commit Message Style")
+def commit_message_style() -> str:
+    """Reusable rules for writing commit messages (Conventional Commits)."""
+    return (
+        "Write Conventional Commit messages for given diffs.\n\n"
+        "Rules:\n"
+        "- Subject: <type>(<optional scope>): <imperative subject>\n"
+        "- Allowed types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert\n"
+        "- Subject must be <= 72 chars and NOT end with a period\n"
+        "- Group related changes; split docs/tests into separate commits when appropriate\n"
+        "- Body explains WHY and key WHAT bullets; add 'BREAKING CHANGE:' footer if needed\n"
+        "- Reference issues with 'Refs #<id>' when present"
+    )
