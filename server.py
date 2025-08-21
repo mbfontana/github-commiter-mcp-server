@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 
 from src.helpers import run_git, ensure_session, Session, sessions
-from src.types import OpenRepoResult, ListChangesResult, FileDiffResult, CommitItem, CommitChangesResult
+from src.types import OpenRepoResult, ListChangesResult, FileDiffResult, CommitItem, CommitChangesResult, PushResult
 
 load_dotenv()
 
@@ -189,3 +189,32 @@ def commit_changes(
         sha = run_git(["rev-parse", "HEAD"], cwd=sess.dir).strip()
         shas.append(sha)
     return CommitChangesResult(commits=shas)
+
+
+@mcp.tool()
+def push(
+        session_id: str,
+        remote: str = "origin",
+        branch: Optional[str] = None,
+        create_upstream: bool = True,
+) -> PushResult:
+    """
+    Push the current branch to a remote. Assumes git auth on host is configured.
+
+    Args:
+        session_id: Session ID
+        remote: str
+        branch: str
+        create_upstream: bool
+
+    Returns:
+        PushResult:
+            remote: str
+            branch: str
+            output: str
+    """
+    sess = ensure_session(session_id)
+    br = branch or sess.branch or run_git(["rev-parse", "--abbrev-ref", "HEAD"], cwd=sess.dir).strip()
+    args = ["push"] + (["-u", remote, br] if create_upstream else [remote, br])
+    out = run_git(args, cwd=sess.dir)
+    return PushResult(remote=remote, branch=br, output=out)

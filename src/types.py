@@ -27,3 +27,9 @@ class CommitItem(TypedDict):
 
 class CommitChangesResult(TypedDict):
     commits: List[str]
+
+
+class PushResult(TypedDict):
+    remote: str
+    branch: str
+    output: str
