@@ -13,7 +13,7 @@ The model reads the diff, drafts **Conventional Commit** messages, and the serve
 
 - Tools: `open_repo`, `list_changes`, `get_file_diff`, `commit_changes`, `push`, `validate_commit_message`
 - Prompt: `commit_message_style` (teaches Conventional Commits)
-- Repos are sandboxed to a root folder via `MCP_REPOS_DIR`
+- Repos are sandboxed to a root folder via `REPOS_DIR`
 - Code split for clarity:
 
   ```
@@ -31,10 +31,9 @@ The model reads the diff, drafts **Conventional Commit** messages, and the serve
 **Requirements:** Python 3.10+, `git` in PATH
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate             # Windows: .venv\Scripts\activate
-pip install "mcp[cli]" python-dotenv
-echo 'MCP_REPOS_DIR=/ABS/PATH/TO/your/repos' > .env
+uv venv
+source .venv/bin/activate            # Windows: .venv\Scripts\activate
+uv add "mcp[cli]" python-dotenv
 ```
 
 
@@ -61,7 +60,7 @@ Add to the config file and restart Claude:
     "git-committer": {
       "command": "/ABS/PATH/TO/repo/.venv/bin/python",
       "args": ["/ABS/PATH/TO/repo/server.py"],
-      "env": { "MCP_REPOS_DIR": "/ABS/PATH/TO/your/repos" }
+      "env": { "REPOS_DIR": "/ABS/PATH/TO/your/repos" }
     }
   }
 }

@@ -18,25 +18,25 @@ mcp = FastMCP("git-committer")
 @mcp.tool()
 def open_repo(
         repo_name: str,
-        branch: Optional[str] = None,
+        branch: Optional[str] = "main",
 ) -> OpenRepoResult:
     """
     Open a local repository by **name** under the repos root directory.
 
     Args:
-      repo_name: Folder name of the repository inside the repos root (env: MCP_REPOS_DIR | REPOS_DIR | REPOS_ROOT)
-      branch: Branch to checkout; defaults to 'main' if not provided. If 'main' doesn't exist and branch isn't provided, falls back to 'master'.
+      repo_name: Folder name of the repository inside the repos root (env: REPOS_DIR | REPOS_DIR | REPOS_ROOT)
+      branch: Branch to checkout; defaults to 'main' if not provided
 
     Returns:
         OpenRepoResult:
-            sessionI_i: str
+            session_id: str
             dir: str
             branch: str
     """
 
     root = os.environ.get("REPOS_DIR")
     if not root:
-        raise RuntimeError("Set MCP_REPOS_DIR (or REPOS_DIR/REPOS_ROOT) to your repos directory")
+        raise RuntimeError("Set REPOS_DIR to your repos directory")
     root_abs = os.path.abspath(root)
 
     target = os.path.abspath(os.path.join(root_abs, repo_name))
